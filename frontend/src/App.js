@@ -1,52 +1,91 @@
-import { useEffect } from "react";
+import React, { useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import GameMenu from "./components/GameMenu";
+import WaterSortGame from "./components/WaterSortGame";
+import LevelSelect from "./components/LevelSelect";
+import { Toaster } from "./components/ui/sonner";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function App() {
+  const [currentView, setCurrentView] = useState('menu'); // 'menu', 'game', 'levels', 'settings', 'help'
+  const [selectedLevel, setSelectedLevel] = useState(1);
+  const [unlockedLevel, setUnlockedLevel] = useState(1);
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+  const handleStartGame = () => {
+    setCurrentView('game');
+    setSelectedLevel(1);
+  };
+
+  const handleShowLevels = () => {
+    setCurrentView('levels');
+  };
+
+  const handleSelectLevel = (level) => {
+    setSelectedLevel(level);
+    setCurrentView('game');
+  };
+
+  const handleBackToMenu = () => {
+    setCurrentView('menu');
+  };
+
+  const handleShowSettings = () => {
+    // TODO: Implement settings view
+    console.log('Settings clicked');
+  };
+
+  const handleShowHelp = () => {
+    // TODO: Implement help view
+    console.log('Help clicked');
+  };
+
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'menu':
+        return (
+          <GameMenu 
+            onStartGame={handleStartGame}
+            onShowLevels={handleShowLevels}
+            onShowSettings={handleShowSettings}
+            onShowHelp={handleShowHelp}
+          />
+        );
+      case 'game':
+        return (
+          <WaterSortGame 
+            initialLevel={selectedLevel}
+            onBackToMenu={handleBackToMenu}
+            onUnlockLevel={(level) => setUnlockedLevel(Math.max(unlockedLevel, level))}
+          />
+        );
+      case 'levels':
+        return (
+          <LevelSelect 
+            onBack={handleBackToMenu}
+            onSelectLevel={handleSelectLevel}
+            unlockedLevel={unlockedLevel}
+          />
+        );
+      default:
+        return (
+          <GameMenu 
+            onStartGame={handleStartGame}
+            onShowLevels={handleShowLevels}
+            onShowSettings={handleShowSettings}
+            onShowHelp={handleShowHelp}
+          />
+        );
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
   return (
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
+          <Route path="/" element={renderCurrentView()} />
         </Routes>
       </BrowserRouter>
+      <Toaster />
     </div>
   );
 }
