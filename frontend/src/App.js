@@ -2,16 +2,23 @@ import React, { useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import GameMenu from "./components/GameMenu";
+import GameModeSelector from "./components/GameModeSelector";
 import WaterSortGame from "./components/WaterSortGame";
 import LevelSelect from "./components/LevelSelect";
 import { Toaster } from "./components/ui/sonner";
 
 function App() {
-  const [currentView, setCurrentView] = useState('menu'); // 'menu', 'game', 'levels', 'settings', 'help'
+  const [currentView, setCurrentView] = useState('menu');
   const [selectedLevel, setSelectedLevel] = useState(1);
+  const [selectedMode, setSelectedMode] = useState('normal');
   const [unlockedLevel, setUnlockedLevel] = useState(1);
 
   const handleStartGame = () => {
+    setCurrentView('modeSelector');
+  };
+
+  const handleSelectMode = (mode) => {
+    setSelectedMode(mode);
     setCurrentView('game');
     setSelectedLevel(1);
   };
@@ -22,11 +29,16 @@ function App() {
 
   const handleSelectLevel = (level) => {
     setSelectedLevel(level);
+    setSelectedMode('normal');
     setCurrentView('game');
   };
 
   const handleBackToMenu = () => {
     setCurrentView('menu');
+  };
+
+  const handleBackToModeSelector = () => {
+    setCurrentView('modeSelector');
   };
 
   const handleShowSettings = () => {
@@ -50,11 +62,19 @@ function App() {
             onShowHelp={handleShowHelp}
           />
         );
+      case 'modeSelector':
+        return (
+          <GameModeSelector 
+            onBack={handleBackToMenu}
+            onSelectMode={handleSelectMode}
+          />
+        );
       case 'game':
         return (
           <WaterSortGame 
             initialLevel={selectedLevel}
-            onBackToMenu={handleBackToMenu}
+            gameMode={selectedMode}
+            onBackToMenu={selectedMode === 'normal' ? handleBackToMenu : handleBackToModeSelector}
             onUnlockLevel={(level) => setUnlockedLevel(Math.max(unlockedLevel, level))}
           />
         );

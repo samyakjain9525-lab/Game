@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Pause, Play, RotateCcw, Undo, Home } from 'lucide-react';
-import { mockGameData } from '../data/mock';
+import { Pause, Play, RotateCcw, Undo, Home, Clock, Target } from 'lucide-react';
+import { LevelGenerator } from '../utils/levelGenerator';
 
-const WaterSortGame = () => {
-  const [currentLevel, setCurrentLevel] = useState(1);
+const WaterSortGame = ({ initialLevel = 1, gameMode = 'normal', onBackToMenu }) => {
+  const [currentLevel, setCurrentLevel] = useState(initialLevel);
   const [gameState, setGameState] = useState(null);
   const [selectedTube, setSelectedTube] = useState(null);
   const [moves, setMoves] = useState(0);
@@ -13,20 +13,37 @@ const WaterSortGame = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [isGameWon, setIsGameWon] = useState(false);
   const [pouringAnimation, setPouringAnimation] = useState(null);
+  const [gameTimer, setGameTimer] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [bestScore, setBestScore] = useState(null);
 
   useEffect(() => {
     initializeLevel(currentLevel);
-  }, [currentLevel]);
+  }, [currentLevel, gameMode]);
+
+  useEffect(() => {
+    let interval;
+    if (isTimerRunning && !isPaused && !isGameWon) {
+      interval = setInterval(() => {
+        setGameTimer(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, isPaused, isGameWon]);
 
   const initializeLevel = (level) => {
-    const levelData = mockGameData.levels.find(l => l.level === level);
-    if (levelData) {
-      setGameState({ tubes: JSON.parse(JSON.stringify(levelData.tubes)) });
-      setMoves(0);
-      setGameHistory([]);
-      setIsGameWon(false);
-      setSelectedTube(null);
-    }
+    const levelData = LevelGenerator.generateLevel(level, gameMode);
+    setGameState({ tubes: JSON.parse(JSON.stringify(levelData.tubes)) });
+    setMoves(0);
+    setGameHistory([]);
+    setIsGameWon(false);
+    setSelectedTube(null);
+    setGameTimer(0);
+    setIsTimerRunning(true);
+    
+    // Load best score for this level
+    const savedScore = localStorage.getItem(`best_score_${gameMode}_${level}`);
+    setBestScore(savedScore ? JSON.parse(savedScore) : null);
   };
 
   const checkWinCondition = (tubes) => {
@@ -83,7 +100,7 @@ const WaterSortGame = () => {
           moves: moves
         }]);
 
-        // Animate pouring
+        // Animate pouring - much faster now
         setPouringAnimation({ from: selectedTube, to: tubeIndex });
         
         setTimeout(() => {
@@ -104,10 +121,22 @@ const WaterSortGame = () => {
           // Check win condition
           if (checkWinCondition(newTubes)) {
             setIsGameWon(true);
+            setIsTimerRunning(false);
+            
+            // Save best score
+            const currentScore = { moves, time: gameTimer };
+            const isBestScore = !bestScore || 
+              moves < bestScore.moves || 
+              (moves === bestScore.moves && gameTimer < bestScore.time);
+            
+            if (isBestScore) {
+              localStorage.setItem(`best_score_${gameMode}_${currentLevel}`, JSON.stringify(currentScore));
+              setBestScore(currentScore);
+            }
           }
           
           setPouringAnimation(null);
-        }, 500);
+        }, 150); // Reduced from 500ms to 150ms for quicker animation
       }
       
       setSelectedTube(null);
@@ -128,12 +157,15 @@ const WaterSortGame = () => {
   };
 
   const handleNextLevel = () => {
-    if (currentLevel < mockGameData.levels.length) {
-      setCurrentLevel(currentLevel + 1);
-    }
+    setCurrentLevel(currentLevel + 1);
   };
 
-  const getTubeColor = (colors, index) => {
+  const handleRandomLevel = () => {
+    const randomLevel = Math.floor(Math.random() * 1000) + 1;
+    setCurrentLevel(randomLevel);
+  };
+
+  const getTubeColor = (color) => {
     const colorMap = {
       'red': '#ff4444',
       'blue': '#4444ff',
@@ -144,27 +176,63 @@ const WaterSortGame = () => {
       'cyan': '#44ffff',
       'pink': '#ff88ff',
       'brown': '#8B4513',
-      'lime': '#32CD32'
+      'lime': '#32CD32',
+      'magenta': '#ff1493',
+      'indigo': '#4b0082',
+      'maroon': '#800000',
+      'navy': '#000080',
+      'olive': '#808000',
+      'teal': '#008080',
+      'silver': '#c0c0c0',
+      'coral': '#ff7f50'
     };
-    return colorMap[colors] || '#888888';
+    return colorMap[color] || '#888888';
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getModeInfo = () => {
+    const modeConfig = {
+      'quick': { name: 'Quick Play', color: 'text-orange-400', icon: <Clock className="w-4 h-4" /> },
+      'strategic': { name: 'Strategic', color: 'text-purple-400', icon: <Target className="w-4 h-4" /> },
+      'endless': { name: 'Endless', color: 'text-green-400', icon: <Target className="w-4 h-4" /> },
+      'tournament': { name: 'Tournament', color: 'text-yellow-400', icon: <Target className="w-4 h-4" /> },
+      'normal': { name: 'Classic', color: 'text-blue-400', icon: <Target className="w-4 h-4" /> }
+    };
+    return modeConfig[gameMode] || modeConfig['normal'];
   };
 
   if (!gameState) return <div>Loading...</div>;
+
+  const modeInfo = getModeInfo();
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <Button variant="outline" size="sm" className="bg-purple-600 hover:bg-purple-700 text-white border-purple-500">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onBackToMenu}
+          className="bg-purple-600 hover:bg-purple-700 text-white border-purple-500"
+        >
           <Home className="w-4 h-4 mr-1" />
           Menu
         </Button>
         
         <div className="text-center">
           <h2 className="text-2xl font-bold text-purple-300">LEVEL{currentLevel}</h2>
+          <div className={`flex items-center justify-center gap-1 ${modeInfo.color} text-sm`}>
+            {modeInfo.icon}
+            <span>{modeInfo.name}</span>
+          </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Button 
             variant="outline" 
             size="sm"
@@ -177,6 +245,19 @@ const WaterSortGame = () => {
             {moves}
           </div>
         </div>
+      </div>
+
+      {/* Game Stats */}
+      <div className="flex justify-center gap-4 mb-4">
+        <div className="bg-gray-800 px-4 py-2 rounded-lg text-sm">
+          <Clock className="w-4 h-4 inline mr-1" />
+          {formatTime(gameTimer)}
+        </div>
+        {bestScore && (
+          <div className="bg-green-800 px-4 py-2 rounded-lg text-sm">
+            Best: {bestScore.moves} moves, {formatTime(bestScore.time)}
+          </div>
+        )}
       </div>
 
       {/* Control Buttons */}
@@ -198,6 +279,15 @@ const WaterSortGame = () => {
           <RotateCcw className="w-4 h-4 mr-1" />
           Restart
         </Button>
+        {(gameMode === 'endless' || gameMode === 'quick') && (
+          <Button 
+            variant="outline" 
+            onClick={handleRandomLevel}
+            className="bg-green-600 hover:bg-green-700 text-white border-green-500"
+          >
+            Random Level
+          </Button>
+        )}
       </div>
 
       {/* Game Board */}
@@ -205,7 +295,7 @@ const WaterSortGame = () => {
         {gameState.tubes.map((tube, index) => (
           <div key={index} className="relative">
             <div 
-              className={`w-16 h-32 border-2 border-gray-300 rounded-b-lg cursor-pointer transition-all duration-200 ${
+              className={`w-16 h-32 border-2 border-gray-300 rounded-b-lg cursor-pointer transition-all duration-150 ${
                 selectedTube === index ? 'ring-4 ring-yellow-400 scale-105' : ''
               } ${pouringAnimation?.from === index ? 'animate-pulse' : ''}`}
               onClick={() => handleTubeClick(index)}
@@ -219,7 +309,7 @@ const WaterSortGame = () => {
               {tube.map((color, colorIndex) => (
                 <div
                   key={`${index}-${colorIndex}`}
-                  className="absolute bottom-0 left-0 right-0 transition-all duration-300"
+                  className="absolute bottom-0 left-0 right-0 transition-all duration-200"
                   style={{
                     backgroundColor: getTubeColor(color),
                     height: `${(100 / 4) * 0.9}%`,
@@ -230,12 +320,12 @@ const WaterSortGame = () => {
                 />
               ))}
               
-              {/* Pouring animation */}
+              {/* Pouring animation - much faster */}
               {pouringAnimation?.from === index && (
                 <div 
-                  className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-1 bg-current animate-bounce"
+                  className="absolute -top-6 left-1/2 transform -translate-x-1/2 w-1 animate-bounce"
                   style={{ 
-                    height: '20px',
+                    height: '15px',
                     backgroundColor: tube.length > 0 ? getTubeColor(tube[tube.length - 1]) : 'transparent'
                   }}
                 />
@@ -254,16 +344,25 @@ const WaterSortGame = () => {
       {/* Win Modal */}
       {isGameWon && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="p-6 text-center bg-gray-800 border-purple-500">
+          <Card className="p-6 text-center bg-gray-800 border-purple-500 max-w-md">
             <h2 className="text-2xl font-bold text-green-400 mb-4">Level Complete!</h2>
-            <p className="text-gray-300 mb-4">Moves: {moves}</p>
-            <div className="flex gap-4 justify-center">
+            <div className="space-y-2 mb-4">
+              <p className="text-gray-300">Moves: <span className="text-white font-bold">{moves}</span></p>
+              <p className="text-gray-300">Time: <span className="text-white font-bold">{formatTime(gameTimer)}</span></p>
+              {bestScore && bestScore.moves === moves && bestScore.time === gameTimer && (
+                <p className="text-yellow-400 font-bold">🏆 New Best Score!</p>
+              )}
+            </div>
+            <div className="flex gap-4 justify-center flex-wrap">
               <Button onClick={handleRestart} variant="outline" className="bg-purple-600 hover:bg-purple-700">
-                Restart Level
+                Play Again
               </Button>
-              {currentLevel < mockGameData.levels.length && (
-                <Button onClick={handleNextLevel} className="bg-green-600 hover:bg-green-700">
-                  Next Level
+              <Button onClick={handleNextLevel} className="bg-green-600 hover:bg-green-700">
+                Next Level
+              </Button>
+              {(gameMode === 'endless' || gameMode === 'quick') && (
+                <Button onClick={handleRandomLevel} className="bg-blue-600 hover:bg-blue-700">
+                  Random Level
                 </Button>
               )}
             </div>
