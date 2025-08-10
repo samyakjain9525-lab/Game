@@ -1,0 +1,24 @@
+{
+  "name": "Water Sort Puzzle - Offline Game",
+  "short_name": "Water Sort",
+  "description": "Amazing 3D water sorting puzzle game that works offline",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/logo512.png", 
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "en"
+}
