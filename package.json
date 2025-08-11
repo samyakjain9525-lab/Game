@@ -1,0 +1,33 @@
+{
+  "name": "water-sort-game",
+  "version": "1.0.0",
+  "description": "A water sorting puzzle game with React frontend and FastAPI backend",
+  "scripts": {
+    "install": "cd frontend && yarn install && cd ../backend && pip install -r requirements.txt",
+    "dev:frontend": "cd frontend && yarn start",
+    "dev:backend": "cd backend && uvicorn server:app --reload",
+    "build:frontend": "cd frontend && yarn build",
+    "deploy:docker": "./deploy.sh",
+    "deploy:dev": "./deploy-dev.sh",
+    "deploy:vercel": "cd frontend && vercel --prod",
+    "deploy:railway": "railway up"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/water-sort-game.git"
+  },
+  "keywords": [
+    "game",
+    "puzzle",
+    "water-sort",
+    "react",
+    "fastapi",
+    "mongodb"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.11.0"
+  }
+}
