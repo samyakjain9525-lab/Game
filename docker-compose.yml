@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: game-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: game_db
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - game-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: game-backend
+    restart: unless-stopped
+    environment:
+      - MONGO_URL=mongodb://admin:password123@mongodb:27017/
+      - DB_NAME=game_db
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:80,http://frontend:80
+    depends_on:
+      - mongodb
+    networks:
+      - game-network
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  # Frontend React App
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: game-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - game-network
+    ports:
+      - "80:80"
+
+  # Nginx Reverse Proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: game-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx-prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - game-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  game-network:
+    driver: bridge
