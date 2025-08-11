@@ -1,0 +1,40 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: game_mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: game
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: game_backend
+    env_file:
+      - backend/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+    environment:
+      # Fallback env vars if not provided in .env
+      MONGO_URL: mongodb://root:example@mongo:27017/?authSource=admin
+      DB_NAME: game
+      CORS_ORIGINS: "*"
+
+  frontend:
+    build: ./frontend
+    container_name: game_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
